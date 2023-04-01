@@ -21,11 +21,11 @@ if($_SERVER["REQUEST_METHOD"]=="POST") {
         $category_id = $_POST['category_id'];
     echo "$name, $price, $description, $category_id";
 
-        echo "Add";
+
         $sql = "INSERT INTO products (name, price, description, category_id) VALUES (?,?,?,?)";
         $stmt = $dbh->prepare($sql);
         $stmt->execute([$name, $price, $description, $category_id]);
-        header("location: /");
+        header("location: /products/list.php");
         exit();
 
 }
