@@ -23,6 +23,7 @@
             <?php
             $sql = "SELECT * FROM products";
             $command = $dbh->query($sql);
+
             foreach($command as $row) {
                 $name = $row["name"];
                 $id = $row["id"];
@@ -37,9 +38,15 @@
                 $imagesSql = "SELECT * FROM product_images WHERE product_id=$id";
                 $images = $dbh->query($imagesSql);
                 echo "
-                     <div class='col-sm-6 col-md-4 col-lg-3 '>
-                        <div class='card' style='width: 100%;'>
-                        <a href='/products/addImage.php?id=$id' class='btn btn-primary' style='border-radius: 6px 6px 0 0'>Додати фото</a>
+                     <div class='col-sm-6 col-md-4 col-lg-3 p-0 p-2'>
+                        <div class='card' style='width: 100%; '>
+                        <a href='/products/edit.php?id=$id' class='text-primary' style='position: absolute; right: 40px; top: 10px; z-index: 10''>
+                           <i class='fa fa-pencil fs-4'></i>
+                        </a>
+                        &nbsp;
+                        <a href='/products/delete.php?id=$id' class='text-danger' style='position: absolute; right: 10px; top: 10px; z-index: 10' data-delete='$id'>
+                           <i class='fa fa-times fs-4'></i>
+                        </a>
                              <div id='carouselExample$id'  class='carousel slide'>
                                 <div class='carousel-inner' style='padding: 40px'>
                                 ";
@@ -50,7 +57,7 @@
                                         if($first){
                                             echo "
                                              <div class='carousel-item active' style='height: 300px'>
-                                                <img class='' style='height: 100%; width: 100%; object-fit: contain'' src='$path'>
+                                                <img class='' style='height: 100%; width: 100%; object-fit: contain'' src='/uploads/$path'>
                                             </div>
                                             ";
                                             $first = false;
@@ -58,7 +65,7 @@
                                         else{
                                             echo "
                                              <div class='carousel-item' style='height: 300px'>
-                                                <img class='' style='height: 100%; width: 100%; object-fit: contain'' src='$path'>
+                                                <img class='' style='height: 100%; width: 100%; object-fit: contain'' src='/uploads/$path'>
                                             </div>
                                             ";
                                         }
@@ -98,9 +105,41 @@
             }
             ?>
 
-
+            <?php include($_SERVER["DOCUMENT_ROOT"] . "/modals/deleteModal.php"); ?>
 </main>
-<script src="/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/js/bootstrap.bundle.min.js" integrity="sha384-qKXV1j0HvMUeCBQ+QVp7JcfGl760yU08IQ+GpUo5hlbpg51QRiuqHAJz8+BrxE/N" crossorigin="anonymous"></script>
+
+<script src="/js/bootstrap.bundle.min.js"></script>
+<script src="/js/axios.min.js"></script>
+<script>
+    window.addEventListener("load", (event) => {
+        let idDelete=0;
+        let linkTo="";
+        const delBtns = document.querySelectorAll("[data-delete]");
+        var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        for(let i=0;i<delBtns.length; i++) {
+            delBtns[i].onclick = function(e) {
+                e.preventDefault();
+                idDelete = this.dataset.delete;
+                linkTo = this.href;
+                console.log("Click item", idDelete);
+                console.log("Link to", linkTo);
+                deleteModal.show();
+            }
+        }
+        //натиснули на кнопку видалити у модалці
+        document.getElementById("modalDeleteYes").onclick = function() {
+            console.log("Delete yes modal", idDelete);
+            axios.post(linkTo).then(resp => {
+                deleteModal.hide();
+                location.reload();
+            });
+
+
+        }
+
+    });
+
+</script>
 </body>
 </html>

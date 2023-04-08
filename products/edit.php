@@ -1,34 +1,23 @@
 <?php
 $name = "";
-$price = "";
-$category_id = "";
+$image = "";
 $description = "";
+$id=$_GET["id"];
 include($_SERVER["DOCUMENT_ROOT"] . "/connection.php");
-$sqlCat = "SELECT * FROM categories";
-$categories = $dbh->query($sqlCat);
-
-
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-
+if($_SERVER["REQUEST_METHOD"]=="POST") {
     if (isset($_POST['name']))
         $name = $_POST['name'];
+    if (isset($_POST['price']))
+        $price = $_POST['price'];
     if (isset($_POST['description']))
         $description = $_POST['description'];
     if (isset($_POST['category_id']))
         $category_id = $_POST['category_id'];
-    if (isset($_POST['price']))
-        $price = $_POST['price'];
 
-    if (!empty($name) && !empty($description) && !empty($category_id) && !empty($price)) {
-        include($_SERVER["DOCUMENT_ROOT"] . "/connection.php");
-        $sql = "INSERT INTO products (name, price, description, category_id ) VALUES (?,?,?,?)";
+    if (!empty($name) && !empty($price) && !empty($description) && !empty($category_id)) {
+        $sql = "UPDATE `products` SET `name` = ?, `price` = ?, `description` = ?, `category_id` = ? WHERE `products`.`id` = ?;";
         $stmt = $dbh->prepare($sql);
-        $stmt->execute([$name, $price, $description, $category_id]);
-
-        $sql = "SELECT LAST_INSERT_ID() as id;";
-        $item = $dbh->query($sql)->fetch();
-        $insert_id = $item['id'];
-        $main = false;
+        $stmt->execute([$name, $price, $description, $category_id, $id]);
         $images = $_POST["images"];
         foreach ($images as $base64) {
             list(, $content) = explode(',', $base64);
@@ -37,16 +26,36 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $fileName = uniqid() . ".jpg"; //унікальне імя для файлу
             $fileSave = $target_dir . $fileName; //місце збереження файлу
             file_put_contents($fileSave, $bytes);
+            $main = false;
             $sql = 'INSERT INTO product_images (path, product_id, IsMain) VALUES(:path,:product_id,:IsMain);';
             $stmt = $dbh->prepare($sql);
             $stmt->bindParam(':path', $fileName);
-            $stmt->bindParam(':product_id', $insert_id);
+            $stmt->bindParam(':product_id', $id);
             $stmt->bindParam(':IsMain', $main);
             $stmt->execute();
         }
         header("location: /products/list.php");
         exit();
     }
+
+}
+if($_SERVER["REQUEST_METHOD"]=="GET") {
+    $sql = "SELECT * FROM products where id=".$id;
+    $command = $dbh->query($sql);
+    foreach($command as $row) {
+        $price = $row["price"];
+        $name = $row["name"];
+        $description = $row["description"];
+        $category_id = $row["category_id"];
+        break;
+    }
+
+    $sql = "SELECT * FROM categories";
+    $categories = $dbh->query($sql);
+
+    $sql = "SELECT * FROM product_images WHERE product_id=$id";
+    $images2 = $dbh->query($sql);
+
 }
 ?>
 
@@ -58,7 +67,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Головна сторінка</title></head>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
 <link rel="stylesheet" href="/css/bootstrap.min.css">
+<link rel="stylesheet" href="/css/font-awesome.min.css">
 <link rel="stylesheet" href="/css/style.css">
 <body>
 <?php include($_SERVER["DOCUMENT_ROOT"] . "/_header.php"); ?>
@@ -66,8 +77,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <main>
     <div class="container">
-        <h1 class="text-center">Додати товар</h1>
-
+        <h1 class="text-center">Змінить категорію</h1>
         <form method="post" class="needs-validation" novalidate>
             <div class="mb-3">
                 <label for="name" class="form-label">Назва</label>
@@ -93,9 +103,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </div>
             <div class="mb-3">
                 <div class="row" id="listImages">
+                    <?php
+                    foreach ($images2 as $img){
+                        $imgId = $img["id"];
+                        $imgPath = $img["path"];
+                            echo "
+                                    <div class='col-md-2' id='img$imgId' style='position: relative'>
+                                    <button type='button' onclick='deleteImg($imgId, `/products/deleteImg.php?id=$imgId`)' class='text-danger' style='position: absolute; right: 10px; top: 0px; z-index: 10' data-delete='$id'>
+                                       <i class='fa fa-times fs-4'></i>
+                                    </button>
+                    <img src='/uploads/$imgPath'
+                         style='cursor: pointer'
+                         alt='фото категорії'
+                         width='100%'>
+                    <input type='hidden'
+                           class='d-none'
+                           value='/uploads/$imgPath'
+                           name='fsd'> 
+                            </div>";
+                    }
+                    ?>
                 </div>
 
-                <div class="col-md-2">
+                <div class="col-md-2 mt-4">
                     <label for="image" class="form-label">
                         <img src="/uploads/upload.png"
                              style="cursor: pointer"
@@ -126,26 +156,44 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             </div>
             <div class="mb-3">
-                    <select class="form-select" name="category_id" id="catedory_id" aria-label="Default select example">
-                        <?php
-                            foreach ($categories as $cat){
-                                $catId = $cat["id"];
-                                $catName = $cat["name"];
-                                echo "
+                <select class="form-select" name="category_id" id="category_id" aria-label="Default select example">
+                    <?php
+                    foreach ($categories as $cat){
+                        $catId = $cat["id"];
+                        $catName = $cat["name"];
+                        if($catId == $category_id){
+                            echo "
+                                    <option value='$catId' selected>$catId - $catName</option>
+                                ";
+                        }
+                        else{
+                            echo "
                                     <option value='$catId'>$catId - $catName</option>
                                 ";
-                            }
-                        ?>
-                    </select>
+                        }
+                    }
+                    ?>
+                </select>
             </div>
 
-
-            <button type="submit" class="btn btn-primary">Додати</button>
+            <button type="submit" class="btn btn-primary">Зберегти</button>
         </form>
     </div>
 </main>
 
+
+<script src="/js/bootstrap.bundle.min.js"></script>
+<script src="/js/bootstrap.validation.js"></script>
+<script src="/js/axios.min.js"></script>
 <script>
+    function deleteImg(id, href){
+
+
+        document.getElementById("img"+id).style.display = "none";
+        axios.post(href).then(resp => {
+            location.reload();
+        });
+    }
     window.addEventListener("load", (event) => {
         const image = document.getElementById("image");
         image.onchange = (e) => {
@@ -174,7 +222,5 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     });
 </script>
-<script src="/js/bootstrap.bundle.min.js"></script>
-<script src="/js/bootstrap.validation.js"></script>
 </body>
 </html>
