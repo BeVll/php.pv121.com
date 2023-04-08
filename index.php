@@ -38,7 +38,7 @@
                 $description = $row["description"];
                 echo "
                 <tr>
-                    <td><img src='$image' width='50'/></td>
+                    <td><img src='/uploads/$image' width='50'/></td>
                     <td>$name</td>
                     <td>$description</td>
                     <td>
